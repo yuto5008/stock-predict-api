@@ -71,8 +71,19 @@ def api_predict(ticker: str = Query("NVDA", description="Ticker symbol to predic
     # フロントからの入力を大文字に統一
     search_ticker = ticker.strip().upper()
     
+    # 💡 ここから書き換え・追記
     import yfinance as yf
-    yf_info = yf.Ticker(search_ticker).info
+    import requests
+
+    # 1. 普通のブラウザ（Chrome）のふりをするお面（セッション）を作る
+    yf_session = requests.Session()
+    yf_session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    })
+
+    # 2. 作ったお面（session）を一緒に渡してデータを取得する
+    yf_info = yf.Ticker(search_ticker, session=yf_session).info
+    # 💡 ここまで書き換え
 
     def to_py_float(val):
         if val is None: return 0.0
