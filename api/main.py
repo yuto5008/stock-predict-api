@@ -71,19 +71,23 @@ def api_predict(ticker: str = Query("NVDA", description="Ticker symbol to predic
     # フロントからの入力を大文字に統一
     search_ticker = ticker.strip().upper()
     
-    # 💡 ここから書き換え・追記
     import yfinance as yf
     import requests
 
-    # 1. 普通のブラウザ（Chrome）のふりをするお面（セッション）を作る
-    yf_session = requests.Session()
-    yf_session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    # 💡 1. 完全に独立したセッションを作成して変装用ヘッダーをセット
+    custom_session = requests.Session()
+    custom_session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5'
     })
 
-    # 2. 作ったお面（session）を一緒に渡してデータを取得する
-    yf_info = yf.Ticker(search_ticker, session=yf_session).info
-    # 💡 ここまで書き換え
+    # 💡 2. 【超重要】yfinance全体の標準データ通信機能を、この変装セッションで「上書き強制」する
+    yf.data.YFData._session = custom_session
+
+    # 💡 3. あとは通常通り呼び出す（これで内部の隠れた通信もすべて変装モードになります）
+    ticker_data = yf.Ticker(search_ticker)
+    yf_info = ticker_data.info
 
     def to_py_float(val):
         if val is None: return 0.0
