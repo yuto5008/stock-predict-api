@@ -66,28 +66,50 @@ async def read_root():
 def health():
     return {"status": "ok", "message": "Stock Prediction API is running"}
 
+import os
+import yfinance as yf
+import requests
+from fastapi import Query
+
+# 💡 1. 取得したAlpha VantageのAPIキーをここに貼り付けます
+ALPHA_VANTAGE_API_KEY = "83OOOCO1RP0YVVNT"
+
 @app.get("/api/predict", response_model=StockPredictionResponse)
 def api_predict(ticker: str = Query("NVDA", description="Ticker symbol to predict")):
-    # フロントからの入力を大文字に統一
     search_ticker = ticker.strip().upper()
     
-    import yfinance as yf
-    import requests
+    # 💡 2. Render上かローカル環境かを自動判定する
+    is_render = os.environ.get("RENDER") is not None
 
-    # 💡 1. 完全に独立したセッションを作成して変装用ヘッダーをセット
-    custom_session = requests.Session()
-    custom_session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5'
-    })
+    if is_render:
+        # ==========================================
+        # 🚀 【Render（本番）環境】Alpha Vantage（米国株・絶対ブロックされない）
+        # ==========================================
+        # Alpha Vantageからデータを取得する処理
+        url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={search_ticker}&apikey={ALPHA_VANTAGE_API_KEY}"
+        response = requests.get(url).json()
+        
+        # データの整形（Alpha Vantageの独特なキーに対応）
+        quote = response.get("Global Quote", {})
+        
+        # あなたの既存のプログラム（予測ロジックなど）に渡せるように辞書型に変換
+        yf_info = {
+            "shortName": search_ticker,
+            "currentPrice": float(quote.get("05. price", 0.0)),
+            "open": float(quote.get("02. open", 0.0)),
+            "regularMarketDayHigh": float(quote.get("03. high", 0.0)),
+            "regularMarketDayLow": float(quote.get("04. low", 0.0)),
+            "volume": int(quote.get("06. volume", 0)),
+        }
+    else:
+        # ==========================================
+        # 🏠 【ローカル（手元）環境】yfinance（日本株も米国株も何でもOK）
+        # ==========================================
+        # 手元ではブロックされないので、元の yfinance をそのまま動かします
+        ticker_data = yf.Ticker(search_ticker)
+        yf_info = ticker_data.info
 
-    # 💡 2. 【超重要】yfinance全体の標準データ通信機能を、この変装セッションで「上書き強制」する
-    yf.data.YFData._session = custom_session
 
-    # 💡 3. あとは通常通り呼び出す（これで内部の隠れた通信もすべて変装モードになります）
-    ticker_data = yf.Ticker(search_ticker)
-    yf_info = ticker_data.info
 
     def to_py_float(val):
         if val is None: return 0.0
