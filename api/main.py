@@ -56,12 +56,8 @@ if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/")
-async def read_index():
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    # 万が一staticの中にindex.htmlがない場合は、ルート直下なども探す安全ガード
-    if not os.path.exists(index_path):
-        index_path = os.path.join(CURRENT_DIR, "index.html")
-    return FileResponse(index_path)
+async def read_root():
+    return {"status": "ok", "message": "Stock Predict API is running"}
 
 # =============================================================
 # 📈 予測APIエンドポイント（バグ修正・完全版）
