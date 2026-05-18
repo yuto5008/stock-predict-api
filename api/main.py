@@ -178,7 +178,7 @@ if __name__ == "__main__":
 # 🔍 【新規追加】会社名・コードからティッカーを検索する辞書シグナル
 # =============================================================
 @app.get("/api/search-tickers")
-def search_tickers(q: str = Query("", description="Search query for company name or ticker")):
+def search_tickers(q: str = ""):  # 👈 Query() を使わず、シンプルな初期値にする
     query = q.strip().lower()
     if not query:
         return []
